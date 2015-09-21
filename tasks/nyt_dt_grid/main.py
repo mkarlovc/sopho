@@ -1,5 +1,7 @@
 import datetime
 import snap
+import pickle
+import os
 
 class Edge:
     
@@ -7,13 +9,11 @@ class Edge:
     def timeConvert(self, text):
         return datetime.datetime.strptime(text, "%d%m%Y").date()    
 
-    def __init__(self, id1, id2, dist):
+    def __init__(self, id1, id2, dist, delta):
         self.id1 = id1
         self.id2 = id2
         self.dist = dist
-        self.time1 = self.timeConvert(id1)
-        self.time2 = self.timeConvert(id2)
-        self.delta = self.time2 - self.time1
+        self.delta = delta
 
 class TempGraph:
     
@@ -56,15 +56,64 @@ class TempGraph:
                     n2 = nodes[e.id2]
                 
                 g.AddEdge(n1, n2)
-             
         return (g,nodes_rev)
+
+    # with one pass create bunch of graph
+    def createGraphGrid(self):
+        grid = {}
+        map = {}
+        nodes = 0
+        for i,e in enumerate(self.edges):
+            key = str(e.delta)+'_'+str(round(e.dist,2))            
+            if not grid.has_key(key):
+                g = snap.TNGraph.New()
+                grid[key] = g
+            else:
+                g = grid[key]
+            
+            n1 = -1
+            n2 = -1
+
+            if not map.has_key(e.id1):
+                map[e.id1] = nodes
+                n1 = nodes
+                nodes += 1
+            else:
+                n1 = map[e.id1]
+ 
+            if not map.has_key(e.id2):
+                map[e.id2] = nodes
+                n2 = nodes
+                nodes += 1
+            else:
+                n2 = map[e.id2]
+                        
+            if g.IsNode(n1) == False:
+                g.AddNode(n1)
+            
+            if g.IsNode(n2) == False:
+                g.AddNode(n2)
+
+            g.AddEdge(n1, n2)
+  
+        return (grid,map)
 
 tg = TempGraph("Test temporal graph")
 
-with open("testgraph.txt", "r") as ins:
+with open("/media/mario/My Book/mario/sopho/nyt/nyt/graph/nyt-06-fast/graph1M.txt", "r") as ins:
+    ins.readline()
     for line in ins:
         line = line.rstrip('\n')
-        edg = Edge(line.split('\t')[0], line.split('\t')[1], float(line.split('\t')[2]))
+        edg = Edge(line.split('\t')[0], line.split('\t')[1], float(line.split('\t')[2]), float(line.split('\t')[4]))
         tg.addEdge(edg)
 
-tg.createGraph(100, 0.6)
+obj = tg.createGraphGrid()
+grid = obj[0]
+map = obj[1]
+
+if not os.path.exists("./grid/"):
+    os.makedirs("./grid/")
+
+for g in grid:
+    FOut = snap.TFOut("grid/g_"+g.replace('.',''))
+    grid[g].Save(FOut)
