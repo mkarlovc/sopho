@@ -18,8 +18,10 @@ class Edge:
         self.delta = delta
 
 class TempGraph:
+    # list of nodes
+    nodes = {}
     # list of edges
-    edges = []    
+    edges = []
     # list of unique times
     times = {}
     # list of unique distances
@@ -56,7 +58,43 @@ class TempGraph:
             TempGraph.distances[edge.dist] = 1
         else:
             TempGraph.distances[edge.dist] += 1
- 
+
+        if not TempGraph.nodes.has_key(edge.id1):
+            TempGraph.nodes[edge.id1] = -1
+
+        if not TempGraph.nodes.has_key(edge.id2):
+            TempGraph.nodes[edge.id2] = -1
+    
+    def removeLastEdge(self):
+        self.edges.pop()   
+   
+    # utility function to find the subset of an element i
+    def find(self, parent, i):
+        if parent[i] == -1:
+            return i
+        return self.find(parent,parent[i])
+
+    # utility function to do union of two subsets   
+    def union(self, parent, x, y):
+        xset = self.find(parent, x)
+        yset = self.find(parent, y)
+        parent[xset] = yset
+
+    # function to check whether a given graph contains cycle or not
+    def isCycle(self):
+        parent = {}
+        #parent[-1] = -1
+        for i,n in enumerate(self.nodes):
+            parent[n] = -1
+        
+        for i,e in enumerate(self.edges):
+            x = self.find(parent, e.id1)
+            y = self.find(parent, e.id2)
+            if x==y:
+                return True
+            self.union(parent, x, y)
+        return False
+    
     # Iterate all edges and create snap graph with edges
     # that satisfy tide difference and distance tresholds
     # No Null Nodes
@@ -187,6 +225,10 @@ class TempGraph:
             FOut = snap.TFOut(path+"/g_"+g.replace('.',''))
             grid[g].Save(FOut)
     
+    # Saving dataframe
+    def saveDf(self, df, path):
+        df.save(path)
+
     # Compute and output grid in form of graphs dictionary 
     def computeGrid(self, logAnd):
         grid = {}
@@ -237,6 +279,23 @@ class TempGraph:
             new_matrix[i,:] = (row-min) / (max-min)
         return pd.DataFrame(new_matrix)
     '''
+    # Load NYT edges
+    def loadMst(self, path):
+        comp = {}
+        with open(path, "r") as ins:
+            ins.readline()
+            edges = 0
+            for line in ins:
+                line = line.rstrip('\n')
+                edg = Edge(line.split('\t')[0], line.split('\t')[1], round(float(line.split('\t')[2]),2), round(float(line.split('\t')[4]),0))
+                self.addEdge(edg)
+                if self.isCycle():
+                    self.removeLastEdge()
+                else:
+                    edges += 1
+                    comp[edges] = round(float(line.split('\t')[2]),2)
+        return comp
+                    
 
     # Load NYT edges
     def loadEdges(self, path):
