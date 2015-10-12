@@ -1,33 +1,40 @@
 from flask import Flask
 from data import get_data
 import json
+import datetime
 
 app = Flask(__name__)
 
-@app.route('/api/rsr/<text>', methods=['GET'])
-def search_rsr(text):
-    index = get_data.loadIndexRsr()
-    res = get_data.searchIndex(index, text)
+@app.route('/api/nyt/reqcount', methods=['GET'])
+def req_count():
+    res = get_data.getReq()
     return json.dumps(res)
 
-@app.route('/api/prj/<text>', methods=['GET'])
-def search_prj(text):
-    index = get_data.loadIndexPrj()
-    res = get_data.searchIndex(index, text)
-    return json.dumps(res)
-
-@app.route('/api/org/<text>', methods=['GET'])
-def search_org(text):
-    index = get_data.loadIndexOrg()
-    res = get_data.searchIndex(index, text)
-    return json.dumps(res)
+@app.route('/api/nyt/reqtotalcount', methods=['GET'])
+def req_toal_count():
+    out = {}
+    res = get_data.getTotalReq()
+    out["count"] = res
+    return json.dumps(out)
 
 @app.route('/api/nyt/article/<text>', methods=['GET'])
 def search_nyt(text):
-    if (get_data.count_nyt()<50000):
-        res = get_data.searchNytClusterId(text)
+    now = datetime.datetime.now()
+    key = str(now.year)+"-"+str(now.month)+"-"+str(now.day)
+
+    current = 0
+    if not get_data.reqcount.has_key(key):
+        get_data.reqcount[key] = 0
     else:
-        res = {"info": "request limit"}
+        current = get_data.reqcount[key]
+
+    if current < 100:
+        res = get_data.searchNytClusterId(text)
+        get_data.reqcount[key] = current + 1
+        get_data.totalcount += 1
+    else:
+        res = {"info": "request limit 100"}
+    
     return json.dumps(res)
 
 @app.route('/api/nyt/articles/<text>', methods=['GET'])
@@ -38,6 +45,7 @@ def search_nyts(text):
         out['articles'] = res
     else:
         out["info"] = "request limit"
+
     return json.dumps(out)
 
 @app.route('/api/nyt/cache', methods=['GET'])

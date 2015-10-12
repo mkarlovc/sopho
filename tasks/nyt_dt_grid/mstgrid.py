@@ -19,6 +19,7 @@ tg = nyt.TempGraph("Test temporal graph")
 tg.loadEdges(path,0,1,3,4,True)
 N = len(tg.nodes)
 print N
+print (time.time()-t1)/(60)
 
 print "computing msti..."
 
@@ -28,6 +29,7 @@ for i in range(0, 180, 1):
     print "window", window
     comp = tg.KruskalMst(window)[1]
     rows[window] = comp
+    print (time.time()-t1)/(60)
 
 print "creating df..."
 

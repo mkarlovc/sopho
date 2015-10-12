@@ -112,7 +112,7 @@ class TempGraph:
             subsets[yroot].rank = xroot
             subsets[xroot].rank = int(subsets[xroot].rank)+1
     
-    def KruskalMst(self, diff):
+    def kruskalMst(self, diff):
         V = len(self.nodes)
         mst = []
         comp = {}
@@ -129,7 +129,7 @@ class TempGraph:
                 x = self.find1(subsets, edge.id1)
                 y = self.find1(subsets, edge.id2)
                 if x != y:
-                    mst.append(edge)
+                    #mst.append(edge)
                     e += 1
                     comp[edge.dist] = V-e
                     self.union1(subsets, x, y)
@@ -352,38 +352,64 @@ class TempGraph:
             new_matrix[i,:] = (row-min) / (max-min)
         return pd.DataFrame(new_matrix)
     
-    # Load NYT edges
-    def loadMst(self, path, delta, precision, N):
-        comp = {}
+    # Load subsets 
+    def loadSubsets(self, path, d1, d2, d3, d4, header):
+        subsets = {}
         with open(path, "r") as ins:
-            #ins.readline()
-            edges = 0
+            if header:
+                ins.readline()
+            
+            for i,line in enumerate(ins):
+                node1 = line.split('\t')[d1]
+                node2 = line.split('\t')[d2]
+                subset = Subset(node1,0)
+                subset = Subset(node2,0)
+                subsets[node1] = subset
+                subsets[node2] = subset
+                if i%1000000==0:
+                    print i
+        return subsets
+                
+    # Load MST NYT edges
+    def loadMst(self, path, subsets, diff, d1, d2, d3, d4, header):
+        V = len(subsets)
+        mst = []
+        comp = {}
+        e = 0
+        i = 0
+        with open(path, "r") as ins:
+            if header:
+                ins.readline()
+
             for i,line in enumerate(ins):
                 line = line.rstrip('\n')
-                if len(line.split('\t')) == 4:
-                    if round(float(line.split('\t')[3]),0) <= delta:
-                        edg = Edge(line.split('\t')[0], line.split('\t')[1], round(float(line.split('\t')[2]),2), round(float(line.split('\t')[3]),0))
-                        self.addEdge(edg)
-                        if self.isCycle():
-                            self.removeLastEdge()
-                        else:
-                            edges += 1
-                            if (i%100==0):
-                                print edges, round(float(line.split('\t')[2]),precision), i
-                            comp[round(float(line.split('\t')[2]),precision)] = edges
-                            if (edges == N-1):
-                                print "breaking", edges, N-1
-                                break
-        return comp 
-
+                if len(line.split('\t')) >= 4:
+                    if round(float(line.split('\t')[d4]),1) <= diff:
+                        edge = Edge(line.split('\t')[d1], line.split('\t')[d2], round(float(line.split('\t')[d3]),2), round(float(line.split('\t')[d4]),1))
+                        x = self.find1(subsets, edge.id1)
+                        y = self.find1(subsets, edge.id2)
+                        if x != y:
+                            #mst.append(edge) 
+                            e += 1
+                            comp[edge.dist] = V-e
+                            self.union1(subsets, x, y)
+                        if i%1000000==0:
+                            print i,V-e,edge.dist
+                if e > V-1:
+                    break
+             
+        return mst,comp
+        
     # Load NYT edges
     def loadEdges(self, path, d1, d2, d3, d4, header):
         with open(path, "r") as ins:
             if header:
                 ins.readline()
 
-            for line in ins:
+            for i,line in enumerate(ins):
                 line = line.rstrip('\n')
                 if len(line.split('\t')) >= 4:
                     edg = Edge(line.split('\t')[d1], line.split('\t')[d2], round(float(line.split('\t')[d3]),2), round(float(line.split('\t')[d4]),1))
                     self.addEdge(edg)
+                    if i%100000 == 0:
+                        print i
